@@ -1,0 +1,7 @@
+# Desktop and shared instrument engine
+PySide6>=6.7,<7
+matplotlib>=3.8,<4
+pyserial>=3.5,<4
+# Optional web interface (run_web.py / compatibility app.py)
+flask>=3.0,<4
+flask-socketio>=5.3,<6

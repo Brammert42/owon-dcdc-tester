@@ -1,0 +1,3 @@
+# Build tools only; install in a separate environment or on the Windows runner.
+PyInstaller>=6.16,<7
+Pillow>=10,<13

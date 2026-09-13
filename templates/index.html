@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWON DC/DC Tester</title>
+    <link rel="icon" type="image/png" href="/static/logo.png">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        const DRY_RUN = {{ dry_run|tojson }};
+    </script>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <header>
+        <h1 style="display:flex;align-items:center;gap:12px"><img src="/static/logo.png" alt="Application logo" width="56" height="56"> OWON DC/DC Tester</h1>
+        <span id="status-badge" class="badge badge-idle">IDLE</span>
+        <span id="dry-run-badge" class="badge badge-warning" style="display:none;">🧪 DRY-RUN</span>
+        <span id="conn-status" class="status-text">⏳ Connecting...</span>
+    </header>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <button class="tab-btn active" data-tab="manual">Manual Test</button>
+        <button class="tab-btn" data-tab="sweep">Automated Sweep</button>
+        <button class="tab-btn" data-tab="production">Production Test</button>
+        <button class="tab-btn" data-tab="database">📂 Database</button>
+    </div>
+
+    <div class="card"><h2>Completed graph runs (maximum 10)</h2><div id="graph-selection"></div></div>
+    <!-- Global Status Bar -->
+    <div class="card status-bar">
+        <div class="measurement-grid">
+            <div class="measurement-box"><div class="meas-label">Vin</div><div class="meas-value" id="g-vin">0.000</div><div class="meas-unit">V</div></div>
+            <div class="measurement-box"><div class="meas-label">Iin</div><div class="meas-value" id="g-iin">0.0000</div><div class="meas-unit">A</div></div>
+            <div class="measurement-box"><div class="meas-label">Pin</div><div class="meas-value" id="g-pin">0.000</div><div class="meas-unit">W</div></div>
+            <div class="measurement-box"><div class="meas-label">Vout</div><div class="meas-value" id="g-vout">0.000</div><div class="meas-unit">V</div></div>
+            <div class="measurement-box"><div class="meas-label">Iout</div><div class="meas-value" id="g-iout">0.0000</div><div class="meas-unit">A</div></div>
+            <div class="measurement-box"><div class="meas-label">Pout</div><div class="meas-value" id="g-pout">0.000</div><div class="meas-unit">W</div></div>
+            <div class="measurement-box measurement-box-efficiency"><div class="meas-label">η</div><div class="meas-value" id="g-eff">0.0</div><div class="meas-unit">%</div></div>
+        </div>
+        <div class="status-bar-row">
+            <span class="status-text">PSU: <span id="g-psu-state" class="badge badge-idle">OFF</span></span>
+            <span class="status-text">Load: <span id="g-load-state" class="badge badge-idle">OFF</span></span>
+            <span class="status-text">Connected: <span id="g-connected">No</span></span>
+            <span class="status-text" id="g-idn"></span>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 1: MANUAL TEST                                           -->
+    <!-- ============================================================ -->
+    <div class="tab-content active" id="tab-manual">
+
+        <!-- Controls -->
+        <div class="card">
+            <h2>PSU Controls</h2>
+            <div class="params-row">
+                <div class="param-group"><label>Voltage (V)</label><input type="number" id="manual-psu-voltage" value="84.0" step="0.1"></div>
+                <div class="param-group"><label>Current Limit (A)</label><input type="number" id="manual-psu-current" value="5.0" step="0.1"></div>
+                <button class="btn btn-primary" onclick="manualSetPSU()">Set PSU</button>
+                <button class="btn btn-success" onclick="psuOn()">PSU ON</button>
+                <button class="btn btn-secondary" onclick="psuOff()">PSU OFF</button>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-secondary" onclick="connectInstruments()">🔌 Connect</button><button class="btn" onclick="apiPost('/api/disconnect').then(pollStatus)">Disconnect</button>
+                <button class="btn btn-sm btn-secondary" onclick="refreshIDN()">Refresh IDN</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Load Controls</h2>
+            <div class="params-row">
+                <div class="param-group"><label>Mode</label><select id="manual-load-mode"><option value="CC">CC</option></select></div>
+                <div class="param-group"><label>Current (A)</label><input type="number" id="manual-load-current" value="2.0" step="0.1"></div>
+                <button class="btn btn-primary" onclick="manualSetLoad()">Set Load</button>
+                <button class="btn btn-success" onclick="loadOn()">Load ON</button>
+                <button class="btn btn-secondary" onclick="loadOff()">Load OFF</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Data Recording</h2>
+            <div class="params-row">
+                <div class="param-group"><label>Step Name</label><input type="text" id="manual-step-name" value="Manual point" style="width:180px;"></div>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-success btn-lg" onclick="manualRecord()">Apply settings + Record (energizes DUT)</button>
+                <button class="btn btn-warning" onclick="manualClear()">Clear Current Run</button>
+                <button class="btn btn-danger" onclick="manualNewRun()">Finish / New Run</button>
+                <button class="btn btn-secondary" onclick="saveCSV()">💾 Save CSV</button>
+                <button class="btn btn-secondary" onclick="downloadCSV()">📄 Download CSV</button>
+            </div>
+        </div>
+
+        <!-- Graph -->
+        <div class="card">
+            <h2>Efficiency vs Output Power by Input Voltage</h2>
+            <p class="note">Efficiency curves are grouped by selected input voltage. Maximum {{ config.get('safety_limits', {}).get('max_voltage_curves_per_run', 10) }} voltage curves per run.</p>
+            <div class="graph-container" id="graph-manual"></div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <h2>Recorded Points</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Step</th><th>Vin (V)</th><th>Iin (A)</th><th>Pin (W)</th>
+                            <th>Vout (V)</th><th>Iout (A)</th><th>Pout (W)</th><th>η (%)</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manual-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2: AUTOMATED SWEEP                                       -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-sweep">
+
+        <div class="card">
+            <h2>Sweep Parameters</h2>
+            <div class="params-row">
+                <div class="param-group"><label>Input Voltage (V)</label><input type="number" id="sweep-voltage" value="84.0" step="0.1"></div>
+                <div class="param-group"><label>Input Current Limit (A)</label><input type="number" id="sweep-current-limit" value="5.0" step="0.1"></div>
+                <div class="param-group"><label>Start Power (W)</label><input type="number" id="sweep-start" value="5" step="1"></div>
+                <div class="param-group"><label>End Power (W)</label><input type="number" id="sweep-end" value="150" step="1"></div>
+                <div class="param-group"><label>Steps</label><input type="number" id="sweep-steps" value="10" min="2" max="50"></div>
+                <div class="param-group"><label>Wait per Step (s)</label><input type="number" id="sweep-wait" value="5" min="1" step="0.5"></div>
+                <div class="param-group"><label>DUT Output Voltage (V)</label><input type="number" id="sweep-dut-vout" value="12.0" step="0.1" min="0.5"></div>
+                <div class="param-group"><label>Run Name</label><input type="text" id="sweep-run-name" placeholder="e.g. 48V-12V test" style="width:160px;"></div>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-primary" onclick="sweepGenerate()">Generate Step List</button>
+                <button class="btn btn-success" id="btn-sweep-start" onclick="sweepStart()">▶ Start Sweep</button>
+                <button class="btn btn-warning" id="btn-sweep-pause" onclick="sweepPause()" disabled>⏸ Pause</button>
+                <button class="btn btn-primary" id="btn-sweep-resume" onclick="sweepResume()" disabled>▶ Resume</button>
+                <button class="btn btn-danger" id="btn-sweep-stop" onclick="sweepStop()" disabled>⏹ Stop</button>
+                <button class="btn btn-warning" onclick="sweepClear()">Clear Current Run</button>
+                <button class="btn btn-danger" onclick="sweepNewRun()">Start New Run</button>
+                <button class="btn btn-secondary" onclick="saveCSV()">💾 Save CSV</button>
+                <button class="btn btn-secondary" onclick="downloadCSV()">📄 Download CSV</button>
+            </div>
+            <p class="step-detail" id="sweep-progress">Ready</p>
+        </div>
+
+        <!-- Generated steps preview -->
+        <div class="card" id="sweep-steps-card" style="display:none;">
+            <h2>Generated Steps</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>#</th><th>Name</th><th>Load Current (A)</th><th>Requested Power (W)</th></tr></thead>
+                    <tbody id="sweep-steps-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Graph -->
+        <div class="card">
+            <h2>Efficiency vs Output Power by Input Voltage</h2>
+            <p class="note">Efficiency curves are grouped by selected input voltage. Maximum {{ config.get('safety_limits', {}).get('max_voltage_curves_per_run', 10) }} voltage curves per run.</p>
+            <div class="graph-container" id="graph-sweep"></div>
+        </div>
+
+        <!-- Table (collapsible) -->
+        <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleSweepTable()">
+                <h2 style="border:none;margin:0;padding:0;">Sweep Points</h2>
+                <span id="sweep-table-toggle" style="color:#7a7a9a;font-size:0.85rem;">▼ show</span>
+            </div>
+            <div id="sweep-table-wrap" style="display:none;" class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Step</th><th>Vin (V)</th><th>Iin (A)</th><th>Pin (W)</th>
+                            <th>Vout (V)</th><th>Iout (A)</th><th>Pout (W)</th><th>η (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sweep-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 3: PRODUCTION TEST                                       -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-production">
+
+        <div class="card">
+            <h2>PCB Label</h2>
+            <div class="params-row">
+                <div class="param-group">
+                    <label>Scan / Enter PCB Label</label>
+                    <input type="text" id="prod-label" placeholder="DCDC-000123" style="width:300px;font-family:monospace;font-size:1.1rem;"
+                           autocomplete="off">
+                </div>
+                <button class="btn btn-primary" onclick="prodStart()" id="btn-prod-start" disabled>▶ Start Production Test</button>
+                <button class="btn btn-danger" onclick="prodAbort()" id="btn-prod-abort" disabled>⏹ Abort Test</button>
+                <button class="btn btn-warning" onclick="prodClear()">Clear</button>
+                <button class="btn btn-secondary" onclick="saveCSV()">💾 Save CSV</button>
+                <button class="btn btn-secondary" onclick="downloadCSV()">📄 Download CSV</button>
+            </div>
+        </div>
+
+        <div class="card" id="prod-profile-card">
+            <h2>Profile</h2>
+            <p id="prod-profile-name">DCDC Rev A Production Test</p>
+            <p class="status-text" id="prod-profile-steps"></p>
+        </div>
+
+        <div class="card">
+            <h2>Optional thermal check</h2>
+            <fieldset id="thermal-settings">
+                <label><input type="checkbox" id="thermal-enabled"> Require thermal check</label>
+                <label>Maximum allowed (°C) <input id="thermal-limit" type="number" min="-20" max="550" step="0.1" value="80"></label>
+                <label>Extra warm-up at final load (s) <input id="thermal-warmup" type="number" min="0" max="300" value="30"></label>
+            </fieldset>
+            <p id="thermal-check-status">The operator enters the camera’s maximum after warm-up.</p>
+            <fieldset id="thermal-entry" disabled>
+                <label>Measured maximum (°C) <input id="thermal-measured" type="number" min="-20" max="550" step="0.1" placeholder="Camera maximum"></label>
+                <button class="btn btn-primary" onclick="thermalSubmit()">Record temperature and finish test</button>
+            </fieldset>
+        </div>
+
+        <!-- Result display -->
+        <div class="card" id="prod-result-card" style="display:none;">
+            <h2>Result</h2>
+            <div id="prod-result-big" class="prod-result-pass">—</div>
+            <p id="prod-fail-reason" class="status-text"></p>
+        </div>
+
+        <!-- Production steps table -->
+        <div class="card">
+            <h2>Test Steps</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Step</th><th>Vin (V)</th><th>Iin (A)</th><th>Pin (W)</th>
+                            <th>Vout (V)</th><th>Iout (A)</th><th>Pout (W)</th><th>η (%)</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prod-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 4: DATABASE VIEWER                                     -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-database">
+
+        <div class="card">
+            <div class="db-header">
+                <h2>Test Run History</h2>
+                <div class="button-row">
+                    <button class="btn btn-secondary" onclick="requestDbData()">🔄 Refresh</button>
+                    <span class="status-text" id="db-count"></span>
+                </div>
+            </div>
+            <div class="db-instrument-status" id="db-instrument-status">
+                <span class="instr-label">Instruments:</span>
+                <span class="instr-item" id="db-psu-status">⏳ PSU — connecting...</span>
+                <span class="instr-sep">|</span>
+                <span class="instr-item" id="db-load-status">⏳ Load — connecting...</span>
+            </div>
+            <div class="connection-panel" id="connection-panel">
+                <div class="conn-row">
+                    <label>PSU port:</label>
+                    <select id="psu-port-select" class="port-select">
+                        <option value="">— select PSU port —</option>
+                    </select>
+                    <label>Load port:</label>
+                    <select id="load-port-select" class="port-select">
+                        <option value="">— select Load port —</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="scanPorts()">🔍 Rescan USB</button>
+                    <button class="btn btn-sm btn-primary" onclick="connectPorts()">🔌 Connect</button>
+                    <button class="btn btn-sm btn-warning" onclick="savePorts()">💾 Save to config</button>
+                </div>
+                <div id="scan-results" class="scan-results"></div>
+            </div>
+            <div class="table-wrapper db-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Mode</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Label</th>
+                            <th>Profile</th>
+                            <th>Result</th>
+                            <th>Points</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-runs-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Expanded run detail (hidden until a run is clicked) -->
+        <div class="card" id="db-detail-card" style="display:none;">
+            <h2 id="db-detail-title">Run Details</h2>
+            <div class="table-wrapper db-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Step</th><th>Set Vin (V)</th><th>Read Vin (V)</th><th>Iin (A)</th><th>Pin (W)</th>
+                            <th>Set Iout (A)</th><th>Vout (V)</th><th>Read Iout (A)</th><th>Pout (W)</th><th>η (%)</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-detail-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Emergency Stop (always visible)                              -->
+    <!-- ============================================================ -->
+    <div class="emergency-section">
+        <div class="card">
+            <h2>Emergency</h2><button class="btn" onclick="apiPost('/api/acknowledge_fault').then(r=>showToast(r.message || (r.success ? 'Fault acknowledged' : 'Failed')))">Acknowledge fault / verify OFF</button>
+            <div class="button-row" style="justify-content:center;">
+                <button class="btn btn-danger btn-emergency" onclick="emergencyStop()">🚨 EMERGENCY STOP</button>
+                <button class="btn btn-secondary" onclick="apiGet('/api/status').then(d=>updateUI(d))">🔄 Refresh</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<script src="/static/app.js"></script>
+</body>
+</html>

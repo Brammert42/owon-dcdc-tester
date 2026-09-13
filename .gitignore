@@ -1,0 +1,56 @@
+# Python environments, caches and packaging output
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Runtime results, hardware logs and local backups
+/data/
+/backups/
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.lock
+*.tmp
+*.bak
+*.swp
+*~
+
+# Editor/agent state and OS metadata
+.idea/
+.vscode/
+.hermes/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local credentials (never part of the application bundle)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Historical/generated local artifacts; not used by the app
+/requirements.zip
+/screenshot.png
+/static/screenshot.png
+/ACTIVE_CODE_PATH_REPORT.md
+/PROJECT_STATUS.md
+
+# Keep source, tests, config.json, .spec files, logo and sound assets tracked.

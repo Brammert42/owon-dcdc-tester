@@ -1,0 +1,188 @@
+{
+  "dry_run": false,
+  "result_sounds_enabled": true,
+  "psu": {
+    "input_voltage": 84.0,
+    "input_current_limit": 5.0
+  },
+  "safety_limits": {
+    "max_input_voltage": 90.0,
+    "max_input_current": 6.0,
+    "max_load_current": 15.0,
+    "max_output_power": 180.0,
+    "nominal_output_voltage": 12.0,
+    "min_output_voltage_allowed": 10.5,
+    "max_output_voltage_allowed": 14.5,
+    "min_efficiency_allowed": 75.0,
+    "max_voltage_curves_per_run": 10,
+    "max_efficiency_percent": 105.0
+  },
+  "steps": [
+    {
+      "name": "Light load",
+      "load_mode": "CC",
+      "load_current": 0.5,
+      "min_vout": 11.5,
+      "min_efficiency": 10.0
+    },
+    {
+      "name": "1A",
+      "load_mode": "CC",
+      "load_current": 1.0,
+      "min_vout": 11.5,
+      "min_efficiency": 50.0
+    },
+    {
+      "name": "2A",
+      "load_mode": "CC",
+      "load_current": 2.0,
+      "min_vout": 11.5,
+      "min_efficiency": 70.0
+    },
+    {
+      "name": "3A",
+      "load_mode": "CC",
+      "load_current": 3.0,
+      "min_vout": 11.5,
+      "min_efficiency": 75.0
+    },
+    {
+      "name": "4A",
+      "load_mode": "CC",
+      "load_current": 4.0,
+      "min_vout": 11.5,
+      "min_efficiency": 80.0
+    },
+    {
+      "name": "5A",
+      "load_mode": "CC",
+      "load_current": 5.0,
+      "min_vout": 11.5,
+      "min_efficiency": 82.0
+    },
+    {
+      "name": "6A",
+      "load_mode": "CC",
+      "load_current": 6.0,
+      "min_vout": 11.5,
+      "min_efficiency": 83.0
+    },
+    {
+      "name": "7A",
+      "load_mode": "CC",
+      "load_current": 7.0,
+      "min_vout": 11.5,
+      "min_efficiency": 84.0
+    },
+    {
+      "name": "8A",
+      "load_mode": "CC",
+      "load_current": 8.0,
+      "min_vout": 11.4,
+      "min_efficiency": 84.0
+    },
+    {
+      "name": "9A",
+      "load_mode": "CC",
+      "load_current": 9.0,
+      "min_vout": 11.4,
+      "min_efficiency": 84.0
+    },
+    {
+      "name": "10A",
+      "load_mode": "CC",
+      "load_current": 10.0,
+      "min_vout": 11.3,
+      "min_efficiency": 84.0
+    },
+    {
+      "name": "11A",
+      "load_mode": "CC",
+      "load_current": 11.0,
+      "min_vout": 11.3,
+      "min_efficiency": 84.0
+    },
+    {
+      "name": "12A",
+      "load_mode": "CC",
+      "load_current": 12.0,
+      "min_vout": 11.2,
+      "min_efficiency": 83.0
+    },
+    {
+      "name": "13A",
+      "load_mode": "CC",
+      "load_current": 13.0,
+      "min_vout": 11.2,
+      "min_efficiency": 82.0
+    },
+    {
+      "name": "14A",
+      "load_mode": "CC",
+      "load_current": 14.0,
+      "min_vout": 11.1,
+      "min_efficiency": 80.0
+    },
+    {
+      "name": "15A",
+      "load_mode": "CC",
+      "load_current": 15.0,
+      "min_vout": 11.0,
+      "min_efficiency": 75.0
+    }
+  ],
+  "production_test_profile": {
+    "name": "DCDC Rev A Production Test",
+    "input_voltage": 84.0,
+    "input_current_limit": 5.0,
+    "nominal_output_voltage": 12.0,
+    "continue_on_fail": false,
+    "thermal_check": {
+      "enabled": false,
+      "max_temp_c": 80.0,
+      "warmup_s": 30.0
+    },
+    "steps": [
+      {
+        "name": "Light load",
+        "requested_power_w": 10.0,
+        "wait_s": 2.0,
+        "min_vout": 11.6,
+        "max_vout": 12.6,
+        "min_efficiency_percent": 90.0
+      },
+      {
+        "name": "Medium load",
+        "requested_power_w": 50.0,
+        "wait_s": 3.0,
+        "min_vout": 11.6,
+        "max_vout": 12.6,
+        "min_efficiency_percent": 90.0
+      },
+      {
+        "name": "High load",
+        "requested_power_w": 120.0,
+        "wait_s": 5.0,
+        "min_vout": 11.5,
+        "max_vout": 12.7,
+        "min_efficiency_percent": 90.0
+      }
+    ]
+  },
+  "csv_filename_template": "dcdc_efficiency_{timestamp}.csv",
+  "settling_time_s": 2.0,
+  "measurement_samples": 3,
+  "cmd_retries": 2,
+  "log_dir": "data/logs",
+  "data_dir": "data/test_logs",
+  "serial_ports": {
+    "psu": "/dev/owon_psu",
+    "load": "/dev/owon_load"
+  },
+  "instruments": {
+    "baudrate": 115200,
+    "timeout_s": 2.0,
+    "auto_connect_on_startup": false,
+    "psu_output_state_format": "auto"
+  }
+}

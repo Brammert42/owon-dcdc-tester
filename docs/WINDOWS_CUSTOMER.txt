@@ -1,0 +1,36 @@
+OWON DC/DC Production Tester for Windows (64-bit)
+
+1. Extract the complete OWON-Tester-Windows ZIP to a local folder.
+2. Keep OWON_Tester.exe and its _internal folder together.
+3. Double-click OWON_Tester.exe. Python does not need to be installed.
+
+The app starts in Operator mode and does not enable instrument outputs at startup.
+Connect the OWON PSU and electronic load using their USB serial adapters. If they
+do not appear as COM ports, install the correct Windows driver for the adapters.
+Click Connect. The tester identifies the instruments before allowing a test.
+If COM numbers change, reconnect to rediscover them. Missing or ambiguous devices
+are rejected; Manager mode can identify and select the ports explicitly.
+
+Manager mode (no PIN) exposes Manual, Sweep and Test settings. Disconnect before
+saving a recipe. Return to Operator mode to perform production tests.
+
+Settings and results are stored here:
+    %LOCALAPPDATA%\OWON-Tester\
+    config.json             Saved manager settings
+    data\test_results.sqlite  Test database
+    data\test_logs\          CSV exports
+    data\logs\               Logs (including startup.log)
+
+Application updates keep existing saved settings. Back up this data folder along
+with your records. Do not edit files inside _internal to change a station recipe.
+
+The optional thermal threshold check works by entering the camera's displayed
+maximum temperature when prompted. Direct THOR002 USB snapshots currently work
+only on Linux; that separate snapshot button is disabled on Windows.
+
+Pass/fail sounds use the Windows default audio output. Managers can preview them
+and enable/disable them in Test settings. Always read the visible result as well.
+
+If startup fails, send the startup log and error message to the application owner.
+This build is not code-signed. Check the source of the ZIP with your supplier if
+Windows or your organization's security tools ask you to verify the application.
