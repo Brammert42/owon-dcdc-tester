@@ -1,6 +1,7 @@
 """Nonblocking process leases using each OS's native file locking API."""
 
 import os
+import errno
 import sys
 import tempfile
 from pathlib import Path
@@ -13,7 +14,10 @@ def lock_exclusive(handle):
             handle.write('\0')
             handle.flush()
         handle.seek(0)
-        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except PermissionError as exc:
+            raise BlockingIOError(errno.EWOULDBLOCK, 'file lease is already held') from exc
     else:
         import fcntl
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)

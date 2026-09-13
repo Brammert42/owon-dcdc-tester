@@ -14,6 +14,15 @@ BASE_DIR = runtime_root()
 DB_PATH = BASE_DIR / "data/test_results.sqlite"
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Close SQLite handles used as context managers on every platform."""
+
+    def __exit__(self, *args):
+        result = super().__exit__(*args)
+        self.close()
+        return result
+
+
 def timestamp():
     return datetime.datetime.now().astimezone().isoformat()
 
@@ -33,7 +42,7 @@ class Store:
             raise
 
     def connection(self):
-        c = sqlite3.connect(self.path, timeout=5)
+        c = sqlite3.connect(self.path, timeout=5, factory=_ClosingConnection)
         c.row_factory = sqlite3.Row
         c.execute("PRAGMA foreign_keys=ON")
         return c
